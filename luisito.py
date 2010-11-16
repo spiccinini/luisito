@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Copyright 2010 Nicolás Etchaniz, Santiago Piccinini.
+# Copyright 2010 Nicolás Echániz, Santiago Piccinini.
 # All rights reserved.
 #
 #
@@ -158,6 +158,8 @@ class HostBasedResource(proxy.ReverseProxyResource):
         return NOT_DONE_YET
 
 
+#TODO: get parameters from command line or config file
+#site = server.Site(HostBasedResource("sucutrule", 80, '', command=["/var/www/%HOST/cyclope_project/manage.py", "runserver", "%PORT"]))
 site = server.Site(HostBasedResource("", 80, '', command=["python2", "-m", "SimpleHTTPServer", "%PORT"]))
 reactor.listenTCP(8080, site)
 
