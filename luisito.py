@@ -29,11 +29,14 @@ from twisted.web.server import NOT_DONE_YET
 from twisted.web import proxy, server, client
 from twisted.web.http import HTTPClient, Request, HTTPChannel
 from twisted.python.failure import Failure
+from twisted.python import log
 from twisted.internet import reactor, tcp
 from twisted.internet.task import LoopingCall
 from twisted.internet.protocol import ClientFactory
 from twisted.internet.defer import Deferred, inlineCallbacks, returnValue
 
+log.info = lambda s:log.msg("INFO: %s" % (s,))
+log.debug = lambda s:log.msg("DEBUG: %s" % (s,))
 
 class Server(object):
     def __init__(self, hostname, port=None, proc=None):
@@ -54,7 +57,7 @@ class ServerPool(object):
 
     @classmethod
     def update(cls):
-        print cls.alive, cls.ports_in_use
+        #print cls.alive, cls.ports_in_use
         if len(cls.alive) > cls.MAX_SERVERS:
             server = cls.alive.pop(0)
             server.proc.terminate()
@@ -81,7 +84,7 @@ def find_open_port(starting_from=9000):
             return port
 
 def wait_for(x):
-    print "waiting for"
+    #print "waiting for"
     d = Deferred()
     reactor.callLater(x, d.callback, None)
     return d
@@ -106,10 +109,6 @@ def wait_open(port):
             return
     raise TimoutError
 
-def log(message):
-    print message
-
-
 class HostBasedResource(proxy.ReverseProxyResource):
     def __init__(self, host, port, path, command, reactor=reactor):
         proxy.ReverseProxyResource.__init__(self, host, port, path, reactor=reactor)
@@ -121,7 +120,7 @@ class HostBasedResource(proxy.ReverseProxyResource):
 
     def _failed_connect(self, f, port, reason, request):
         ServerPool.ports_in_use.discard(port)
-        log(reason)
+        log.err(reason)
         request.write("505 Error")
         request.finish()
         return f
@@ -133,26 +132,37 @@ class HostBasedResource(proxy.ReverseProxyResource):
         """
         Render a request by forwarding it to the proxied server.
         """
-        print ServerPool.alive
         requested_host = request.received_headers['host'].partition(":")[0]
+        log.info("New request: %s" % (requested_host,))
         request.content.seek(0, 0)
         clientFactory = self.proxyClientFactoryClass(
             request.method, request.path , request.clientproto,
             request.getAllHeaders(), request.content.read(), request)
-
         if not requested_host in ServerPool.alive:
+            log.info("requested_host not found in ServerPool.alive")
+            log.info("Spawning server")
+            log.debug("Finding port")
             port = find_open_port()
+            log.debug("Port: %d" % (port, ))
             command = self.make_command(requested_host, port)
+            log.debug("command: %s" % (command, ))
             proc = subprocess.Popen(command)
+            log.debug("proc: %s" % (proc.pid, ))
+            log.debug("waiting process")
             d = wait_open(port)
             ServerPool.ports_in_use.add(port)
             d.addCallbacks(callback=self._connect, errback=self._failed_connect,
                            callbackArgs=(port, clientFactory), errbackArgs=(port, "TimeoutError", request))
             d.addCallback(lambda _: ServerPool.alive.append(Server(requested_host, port, proc)))
+            d.addCallback(lambda _: log.debug("ServerPool.alive: %s" % (ServerPool.alive, )))
         else:
+            log.info("requested_host found in ServerPool.alive")
+            log.debug("Updating ServerPool.alive indexes")
+            log.debug("old: ServerPool.alive: %s" % (ServerPool.alive, ))
             actual_index = ServerPool.alive.index(requested_host)
             server = ServerPool.alive.pop(actual_index)
             ServerPool.alive.append(server)
+            log.debug("new: ServerPool.alive: %s" % (ServerPool.alive, ))
             self.reactor.connectTCP("127.0.0.1", server.port, clientFactory)
 
         return NOT_DONE_YET
@@ -160,10 +170,13 @@ class HostBasedResource(proxy.ReverseProxyResource):
 
 #TODO: get parameters from command line or config file
 #site = server.Site(HostBasedResource("sucutrule", 80, '', command=["/var/www/%HOST/cyclope_project/manage.py", "runserver", "%PORT"]))
+#site = server.Site(HostBasedResource("", 80, '', command=["python2","/home/san/somecode/luisito/django_projects/%HOST/project/manage.py", "runserver", "%PORT"]))
 site = server.Site(HostBasedResource("", 80, '', command=["python2", "-m", "SimpleHTTPServer", "%PORT"]))
 reactor.listenTCP(8080, site)
 
 lp = LoopingCall(ServerPool.update)
 lp.start(2.0)
+
+log.startLogging(open('luisito.log', 'w'))
 
 reactor.run()
