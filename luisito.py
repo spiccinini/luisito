@@ -53,7 +53,6 @@ class ServerPool(object):
     alive = []
     ports_in_use = set()
     MAX_SERVERS = 10
-    MIN_SERVERS = 3 # TODO
 
     @classmethod
     def update(cls):
@@ -62,6 +61,12 @@ class ServerPool(object):
             server = cls.alive.pop(0)
             server.proc.terminate()
             cls.ports_in_use.discard(server.port)
+    @classmethod
+    def stop_all(cls):
+        for server in cls.alive:
+            server.proc.terminate()
+        cls.alive = []
+
 
 def find_open_port(starting_from=9000):
     """
@@ -168,11 +173,28 @@ class HostBasedResource(proxy.ReverseProxyResource):
         return NOT_DONE_YET
 
 
-#TODO: get parameters from command line or config file
-#site = server.Site(HostBasedResource("sucutrule", 80, '', command=["/var/www/%HOST/cyclope_project/manage.py", "runserver", "%PORT"]))
-#site = server.Site(HostBasedResource("", 80, '', command=["python2","/home/san/somecode/luisito/django_projects/%HOST/project/manage.py", "runserver", "%PORT"]))
-site = server.Site(HostBasedResource("", 80, '', command=["python2", "-m", "SimpleHTTPServer", "%PORT"]))
-reactor.listenTCP(8080, site)
+import argparse
+
+parser = argparse.ArgumentParser(description='',
+                                formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument('server', choices=('django', 'SimpleHTTPServer'), help='server type to proxy')
+parser.add_argument('--host', default="", help='server hostname.')
+parser.add_argument('--port', default=8080, type=int, help='server port')
+parser.add_argument('--workers', default=10, type=int)
+
+args = parser.parse_args()
+
+if args.server == "django":
+    cmd = ["./django_http_server.py", "--host", "127.0.0.1", "--port", "%PORT",
+           "/home/san/somecode/luisito/django_projects/%HOST/project/"]
+elif args.server == "SimpleHTTPServer":
+    cmd = ["python2", "-m", "SimpleHTTPServer", "%PORT"]
+
+ServerPool.MAX_SERVERS = args.workers
+
+site = server.Site(HostBasedResource("", 80, '', command=cmd))
+
+reactor.listenTCP(interface=args.host, port=args.port, factory=site)
 
 lp = LoopingCall(ServerPool.update)
 lp.start(2.0)
@@ -180,3 +202,5 @@ lp.start(2.0)
 log.startLogging(open('luisito.log', 'w'))
 
 reactor.run()
+
+ServerPool.stop_all()
