@@ -172,35 +172,36 @@ class HostBasedResource(proxy.ReverseProxyResource):
 
         return NOT_DONE_YET
 
+if __name__ == "__main__":
 
-import argparse
+    import argparse
 
-parser = argparse.ArgumentParser(description='',
-                                formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('server', choices=('django', 'SimpleHTTPServer'), help='server type to proxy')
-parser.add_argument('--host', default="", help='server hostname.')
-parser.add_argument('--port', default=8080, type=int, help='server port')
-parser.add_argument('--workers', default=10, type=int)
+    parser = argparse.ArgumentParser(description='',
+                                    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('server', choices=('django', 'SimpleHTTPServer'), help='server type to proxy')
+    parser.add_argument('--host', default="", help='server hostname.')
+    parser.add_argument('--port', default=8080, type=int, help='server port')
+    parser.add_argument('--workers', default=10, type=int)
 
-args = parser.parse_args()
+    args = parser.parse_args()
 
-if args.server == "django":
-    cmd = ["./django_http_server.py", "--host", "127.0.0.1", "--port", "%PORT",
-           "/home/san/somecode/luisito/django_projects/%HOST/project/"]
-elif args.server == "SimpleHTTPServer":
-    cmd = ["python2", "-m", "SimpleHTTPServer", "%PORT"]
+    if args.server == "django":
+        cmd = ["./django_http_server.py", "--host", "127.0.0.1", "--port", "%PORT",
+               "/home/san/somecode/luisito/django_projects/%HOST/project/"]
+    elif args.server == "SimpleHTTPServer":
+        cmd = ["python2", "-m", "SimpleHTTPServer", "%PORT"]
 
-ServerPool.MAX_SERVERS = args.workers
+    ServerPool.MAX_SERVERS = args.workers
 
-site = server.Site(HostBasedResource("", 80, '', command=cmd))
+    site = server.Site(HostBasedResource("", 80, '', command=cmd))
 
-reactor.listenTCP(interface=args.host, port=args.port, factory=site)
+    reactor.listenTCP(interface=args.host, port=args.port, factory=site)
 
-lp = LoopingCall(ServerPool.update)
-lp.start(2.0)
+    lp = LoopingCall(ServerPool.update)
+    lp.start(2.0)
 
-log.startLogging(open('luisito.log', 'w'))
+    log.startLogging(open('luisito.log', 'w'))
 
-reactor.run()
+    reactor.run()
 
-ServerPool.stop_all()
+    ServerPool.stop_all()
