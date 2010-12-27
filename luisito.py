@@ -24,6 +24,8 @@ import urlparse
 import subprocess
 from urllib import quote as urlquote
 
+import twisted
+
 from twisted.web.resource import Resource
 from twisted.web.server import NOT_DONE_YET
 from twisted.web import proxy, server, client
@@ -33,7 +35,9 @@ from twisted.python import log
 from twisted.internet import reactor, tcp
 from twisted.internet.task import LoopingCall
 from twisted.internet.protocol import ClientFactory
+from twisted.internet.error import ConnectionRefusedError
 from twisted.internet.defer import Deferred, inlineCallbacks, returnValue
+
 
 log.info = lambda s:log.msg("INFO: %s" % (s,))
 log.debug = lambda s:log.msg("DEBUG: %s" % (s,))
@@ -108,7 +112,11 @@ def wait_open(port):
     for i in range(int(WAIT_UP_TO/SLEEP)):
         try:
             yield client.getPage("http://127.0.0.1:%s/" % port)
-        except:
+        except twisted.web.error.Error, e:
+            # This could be that the server is geting 404, 500, etc so server is up
+            # and running.
+            return
+        except ConnectionRefusedError:
             yield wait_for(SLEEP)
         else:
             return
@@ -200,7 +208,7 @@ if __name__ == "__main__":
     lp = LoopingCall(ServerPool.update)
     lp.start(2.0)
 
-    log.startLogging(open('luisito.log', 'w'))
+    log.startLogging(open('luisito.log', 'a'))
 
     reactor.run()
 
