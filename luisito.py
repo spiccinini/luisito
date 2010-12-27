@@ -158,8 +158,14 @@ class HostBasedResource(proxy.ReverseProxyResource):
         requested_host = request.received_headers['host'].partition(":")[0]
         log.info("New request: %s" % (requested_host,))
         request.content.seek(0, 0)
+        print request.uri
+        qs = urlparse.urlparse(request.uri)[4]
+        if qs:
+            rest = self.path + '?' + qs
+        else:
+            rest = self.path
         clientFactory = self.proxyClientFactoryClass(
-            request.method, request.path , request.clientproto,
+            request.method, rest , request.clientproto,
             request.getAllHeaders(), request.content.read(), request)
         if not requested_host in ServerPool.alive:
             log.info("requested_host not found in ServerPool.alive")
