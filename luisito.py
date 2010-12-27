@@ -18,7 +18,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import os
 import time
+import stat
 import socket
 import urlparse
 import subprocess
@@ -140,7 +142,14 @@ class HostBasedResource(proxy.ReverseProxyResource):
         return f
 
     def make_command(self, host, port):
-        return [item.replace("%HOST", host).replace("%PORT", str(port)) for item in self.COMMAND]
+        COMMAND = self.COMMAND[:]
+        if self.PROJECT_PATH:
+            s = os.stat(self.PROJECT_PATH.replace("%HOST", host))
+            uid = str(s[stat.ST_UID])
+            gid = str(s[stat.ST_GID])
+            COMMAND = [item.replace("%UID", uid).replace("%GID", gid) for item in COMMAND]
+
+        return [item.replace("%HOST", host).replace("%PORT", str(port)) for item in COMMAND]
 
     def render(self, request):
         """

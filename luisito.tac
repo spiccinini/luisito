@@ -1,7 +1,12 @@
+import os
+import sys
 
 from twisted.application import internet, service
 from twisted.application.internet import TimerService
 from twisted.web import server
+
+
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 
 from luisito import HostBasedResource, ServerPool
 import settings
@@ -15,7 +20,9 @@ serviceCollection = service.IServiceCollection(application)
 time_service = TimerService(0.2, ServerPool.update)
 time_service.setServiceParent(serviceCollection)
 
-site = server.Site(HostBasedResource("", 80, '', command=settings.CMD, env=settings.ENV))
+resource = HostBasedResource("", 80, '', command=settings.CMD, env=settings.ENV)
+resource.PROJECT_PATH = settings.PROJECT_PATH
+site = server.Site(resource)
 tcp_server = internet.TCPServer(interface=settings.HOST, port=settings.PORT, factory=site)
 tcp_server.setServiceParent(serviceCollection)
 

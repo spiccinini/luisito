@@ -34,8 +34,17 @@ parser.add_argument('--port', default=8000, type=int,
                     help='server port')
 parser.add_argument('--settings', default="settings",
                     help='Django settings, relative to PATH')
+parser.add_argument('--uid', help='Process user ID', type=int)
+parser.add_argument('--gid', help='Process group ID', type=int)
 
 args = parser.parse_args()
+
+if args.gid is not None:
+    os.setgid(args.gid)
+
+if args.uid is not None:
+    os.setuid(args.uid)
+
 sys.path.insert(0, args.PATH)
 
 base_path = os.path.split(os.path.normpath(args.PATH))[0]
