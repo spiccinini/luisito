@@ -123,10 +123,11 @@ def wait_open(port):
     raise TimoutError
 
 class HostBasedResource(proxy.ReverseProxyResource):
-    def __init__(self, host, port, path, command, reactor=reactor):
+    def __init__(self, host, port, path, command, env=None, reactor=reactor):
         proxy.ReverseProxyResource.__init__(self, host, port, path, reactor=reactor)
         self.isLeaf = True
         self.COMMAND = command
+        self.ENV = env
 
     def _connect(self, r, port, clientFactory):
         self.reactor.connectTCP(host="127.0.0.1", port=port, factory=clientFactory)
@@ -159,7 +160,7 @@ class HostBasedResource(proxy.ReverseProxyResource):
             log.debug("Port: %d" % (port, ))
             command = self.make_command(requested_host, port)
             log.debug("command: %s" % (command, ))
-            proc = subprocess.Popen(command)
+            proc = subprocess.Popen(command, env=self.ENV)
             log.debug("proc: %s" % (proc.pid, ))
             log.debug("waiting process")
             d = wait_open(port)
