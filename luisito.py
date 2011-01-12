@@ -19,26 +19,19 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-import time
 import stat
 import socket
-import urlparse
 import subprocess
-from urllib import quote as urlquote
 
 import twisted
 
-from twisted.web.resource import Resource
 from twisted.web.server import NOT_DONE_YET
 from twisted.web import proxy, server, client
-from twisted.web.http import HTTPClient, Request, HTTPChannel
-from twisted.python.failure import Failure
 from twisted.python import log
-from twisted.internet import reactor, tcp
+from twisted.internet import reactor
 from twisted.internet.task import LoopingCall
-from twisted.internet.protocol import ClientFactory
 from twisted.internet.error import ConnectionRefusedError
-from twisted.internet.defer import Deferred, inlineCallbacks, returnValue
+from twisted.internet.defer import Deferred, inlineCallbacks
 
 
 log.info = lambda s:log.msg("INFO: %s" % (s,))
@@ -62,15 +55,16 @@ class ServerPool(object):
 
     @classmethod
     def update(cls):
-        #print cls.alive, cls.ports_in_use
         if len(cls.alive) > cls.MAX_SERVERS:
             server = cls.alive.pop(0)
             server.proc.terminate()
+            server.proc.wait()
             cls.ports_in_use.discard(server.port)
     @classmethod
     def stop_all(cls):
         for server in cls.alive:
             server.proc.terminate()
+            server.proc.wait()
         cls.alive = []
 
 
@@ -95,7 +89,6 @@ def find_open_port(starting_from=9000):
             return port
 
 def wait_for(x):
-    #print "waiting for"
     d = Deferred()
     reactor.callLater(x, d.callback, None)
     return d
