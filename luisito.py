@@ -148,7 +148,8 @@ class HostBasedResource(proxy.ReverseProxyResource):
         """
         Render a request by forwarding it to the proxied server.
         """
-        requested_host = request.received_headers['host'].partition(":")[0]
+        #requested_host = request.received_headers['host'].partition(":")[0]
+        requested_host = request.requestHeaders.getRawHeaders('x-canonical-host')[0] #.partition(":")[0]
         log.info("New request: %s" % (requested_host,))
         request.content.seek(0, 0)
         clientFactory = self.proxyClientFactoryClass(
