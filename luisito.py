@@ -27,8 +27,8 @@ import twisted
 
 from twisted.web.server import NOT_DONE_YET
 from twisted.web import proxy, server, client
-from twisted.python import log
-from twisted.internet import reactor
+from twisted.python import log, failure
+from twisted.internet import reactor, defer
 from twisted.internet.task import LoopingCall
 from twisted.internet.error import ConnectionRefusedError
 from twisted.internet.defer import Deferred, inlineCallbacks
@@ -43,14 +43,20 @@ class Server(object):
         self.hostname = hostname
         self.port = port
         self.proc = proc
-    def __repr__(self): return "Server %s:%d PID:%s" % (self.hostname, self.port, self.proc.pid)
 
-    def __eq__(self, value): return self.hostname == value
-    def __ne__(self, value): return self.hostname != value
+    def __repr__(self):
+        return "Server %s:%d PID:%s" % (self.hostname, self.port, self.proc.pid)
+
+    def __eq__(self, value):
+        return self.hostname == value
+
+    def __ne__(self, value):
+        return self.hostname != value
 
 
 class ServerPool(object):
     alive = []
+    waking_up = set()
     ports_in_use = set()
     MAX_SERVERS = 10
 
@@ -67,6 +73,14 @@ class ServerPool(object):
             server.proc.terminate()
             server.proc.wait()
         cls.alive = []
+
+    @classmethod
+    def is_alive(cls, hostname):
+        return hostname in cls.alive
+
+    @classmethod
+    def is_waking_up(cls, hostname):
+        return hostname in cls.waking_up
 
 
 def find_open_port(starting_from=9000):
@@ -95,7 +109,7 @@ def wait_for(x):
     return d
 
 
-class TimoutError(Exception):
+class TimeoutError(Exception):
     pass
 
 @inlineCallbacks
@@ -117,7 +131,24 @@ def wait_open(port):
             yield wait_for(SLEEP)
         else:
             return
-    raise TimoutError
+    raise TimeoutError
+
+@inlineCallbacks
+def wait_alive(hostname):
+    # servers don't start up *quite* right away, so we give it a
+    # moment to be ready to accept connections
+    SLEEP = 0.2
+    WAIT_UP_TO = 5+SLEEP
+
+    yield wait_for(SLEEP)
+    for i in range(int(WAIT_UP_TO/SLEEP)):
+        if  ServerPool.is_alive(hostname):
+            pool = ServerPool.alive
+            port = pool[pool.index(hostname)].port
+            defer.returnValue(port)
+        else:
+            yield wait_for(SLEEP)
+    raise TimeoutError
 
 class HostBasedResource(proxy.ReverseProxyResource):
     def __init__(self, host, port, path, command, env=None, reactor=reactor):
@@ -129,12 +160,16 @@ class HostBasedResource(proxy.ReverseProxyResource):
     def _connect(self, r, port, clientFactory):
         self.reactor.connectTCP(host="127.0.0.1", port=port, factory=clientFactory)
 
-    def _failed_connect(self, f, port, reason, request):
-        ServerPool.ports_in_use.discard(port)
+    def _failed_connect(self, f, request, reason="", requested_host=None, port=None):
+        ServerPool.waking_up.discard(requested_host)
+        if port is not None:
+            ServerPool.ports_in_use.discard(port)
         request.setResponseCode(503)
         request.write("503 Error")
         request.finish()
-        log.error(reason)
+        if reason:
+            log.error(reason)
+        return f
 
     def make_command(self, host, port):
         COMMAND = self.COMMAND[:]
@@ -156,8 +191,11 @@ class HostBasedResource(proxy.ReverseProxyResource):
         clientFactory = self.proxyClientFactoryClass(
             request.method, request.uri , request.clientproto,
             request.getAllHeaders(), request.content.read(), request)
-        if not requested_host in ServerPool.alive:
-            log.info("requested_host not found in ServerPool.alive")
+
+        if not (ServerPool.is_alive(requested_host) or ServerPool.is_waking_up(requested_host)):
+            ServerPool.waking_up.add(requested_host)
+            log.info("requested_host not found in ServerPool.alive nor ServerPool.waking_up")
+            log.debug("Adding requested_host to ServerPool.waking_up")
             log.info("Spawning server")
             log.debug("Finding port")
             port = find_open_port()
@@ -169,11 +207,21 @@ class HostBasedResource(proxy.ReverseProxyResource):
             log.debug("waiting process")
             d = wait_open(port)
             ServerPool.ports_in_use.add(port)
+
             d.addCallbacks(callback=self._connect, errback=self._failed_connect,
-                           callbackArgs=(port, clientFactory), errbackArgs=(port, "TimeoutError", request))
+                           callbackArgs=(port, clientFactory), errbackArgs=(request, "TimeoutError in wait_open", requested_host, port))
+            d.addCallback(lambda _: ServerPool.waking_up.discard(requested_host))
             d.addCallback(lambda _: ServerPool.alive.append(Server(requested_host, port, proc)))
             d.addCallback(lambda _: log.debug("ServerPool.alive: %s" % (ServerPool.alive, )))
+        elif requested_host in ServerPool.waking_up:
+            log.info("requested_host found in ServerPool.waking_up")
+            log.debug("waiting process")
+            port = wait_alive(requested_host)
+            port.addCallback(lambda port_: self._connect(port, port_, clientFactory))
+            port.addErrback(self._failed_connect, request, "TimeoutError in wait_alive", requested_host)
         else:
+            if requested_host in ServerPool.waking_up:
+                d = wait_alive(requested_host)
             log.info("requested_host found in ServerPool.alive")
             log.debug("Updating ServerPool.alive indexes")
             log.debug("old: ServerPool.alive: %s" % (ServerPool.alive, ))
