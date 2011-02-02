@@ -1,0 +1,10 @@
+syntax: glob
+*.pyc
+*.pyo
+*~
+*.old
+*.backup
+*.orig
+*.log*
+*.swp
+twisted.pid

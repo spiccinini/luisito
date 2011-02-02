@@ -151,11 +151,12 @@ def wait_alive(hostname):
     raise TimeoutError
 
 class HostBasedResource(proxy.ReverseProxyResource):
-    def __init__(self, host, port, path, command, env=None, reactor=reactor):
+    def __init__(self, host, port, path, command, env=None, host_header=None, reactor=reactor):
         proxy.ReverseProxyResource.__init__(self, host, port, path, reactor=reactor)
         self.isLeaf = True
         self.COMMAND = command
         self.ENV = env
+        self.host_header = host_header
 
     def _connect(self, r, port, clientFactory):
         self.reactor.connectTCP(host="127.0.0.1", port=port, factory=clientFactory)
@@ -185,7 +186,10 @@ class HostBasedResource(proxy.ReverseProxyResource):
         """
         Render a request by forwarding it to the proxied server.
         """
-        requested_host = request.received_headers['host'].partition(":")[0]
+        if self.host_header is None:
+            requested_host = request.received_headers['host'].partition(":")[0]
+        else:
+            requested_host = request.requestHeaders.getRawHeaders(self.host_header)[0]
         log.info("New request: %s" % (requested_host,))
         request.content.seek(0, 0)
         clientFactory = self.proxyClientFactoryClass(

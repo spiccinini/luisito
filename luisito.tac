@@ -20,7 +20,8 @@ serviceCollection = service.IServiceCollection(application)
 time_service = TimerService(0.2, ServerPool.update)
 time_service.setServiceParent(serviceCollection)
 
-resource = HostBasedResource("", 80, '', command=settings.CMD, env=settings.ENV)
+resource = HostBasedResource("", 80, '', command=settings.CMD, env=settings.ENV,
+                             host_header=settings.HOST_HEADER)
 resource.PROJECT_PATH = settings.PROJECT_PATH
 site = server.Site(resource)
 tcp_server = internet.TCPServer(interface=settings.HOST, port=settings.PORT, factory=site)
