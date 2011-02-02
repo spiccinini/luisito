@@ -36,6 +36,7 @@ from twisted.internet.defer import Deferred, inlineCallbacks
 
 log.info = lambda s:log.msg("INFO: %s" % (s,))
 log.debug = lambda s:log.msg("DEBUG: %s" % (s,))
+log.error = lambda s:log.msg("ERROR: %s" % (s,))
 
 class Server(object):
     def __init__(self, hostname, port=None, proc=None):
@@ -106,11 +107,12 @@ def wait_open(port):
 
     for i in range(int(WAIT_UP_TO/SLEEP)):
         try:
-            yield client.getPage("http://127.0.0.1:%s/" % port)
+            yield client.getPage("http://127.0.0.1:%s/" % port, followRedirect=False)
         except twisted.web.error.Error, e:
             # This could be that the server is geting 404, 500, etc so server is up
             # and running.
             return
+
         except ConnectionRefusedError:
             yield wait_for(SLEEP)
         else:
@@ -129,10 +131,10 @@ class HostBasedResource(proxy.ReverseProxyResource):
 
     def _failed_connect(self, f, port, reason, request):
         ServerPool.ports_in_use.discard(port)
-        log.err(reason)
-        request.write("505 Error")
+        request.setResponseCode(503)
+        request.write("503 Error")
         request.finish()
-        return f
+        log.error(reason)
 
     def make_command(self, host, port):
         COMMAND = self.COMMAND[:]
