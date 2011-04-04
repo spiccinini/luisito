@@ -8,22 +8,22 @@ from twisted.web import server
 
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 
-from luisito import HostBasedResource, ServerPool
+from luisito.server import ServerPool
+from luisito.proxy import MultiHostBasedResource
+
 import settings
-
-
-ServerPool.MAX_SERVERS = settings.MAX_SERVERS
 
 application = service.Application('luisito')
 serviceCollection = service.IServiceCollection(application)
 
-time_service = TimerService(0.2, ServerPool.update)
-time_service.setServiceParent(serviceCollection)
+server_pool = ServerPool(cmd_tpl=settings.CMD_TPL, env=settings.ENV,
+                         project_path_tpl=settings.PROJECT_PATH,
+                         max_servers=settings.MAX_SERVERS)
 
-resource = HostBasedResource("", 80, '', command=settings.CMD, env=settings.ENV,
-                             host_header=settings.HOST_HEADER)
-resource.PROJECT_PATH = settings.PROJECT_PATH
-site = server.Site(resource)
+multi_host = MultiHostBasedResource(server_pool=server_pool, config=settings.MULTIHOST_CONFIG)
+
+site = server.Site(multi_host)
+
 tcp_server = internet.TCPServer(interface=settings.HOST, port=settings.PORT, factory=site)
 tcp_server.setServiceParent(serviceCollection)
 
