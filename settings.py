@@ -1,5 +1,5 @@
 
-HOST = "0.0.0.0"
+HOST = "127.0.0.1"
 PORT = 8080
 MAX_SERVERS = 10
 
@@ -12,15 +12,16 @@ MULTIHOST_CONFIG = None
 PROJECT_PATH = None
 
 ################
-# django-cyclope
+# django
 #
-#CMD_TPL = ["/opt/luisito/django_http_server.py", "--host", "127.0.0.1", "--port", "%PORT",
+#CMD_TPL = ["/opt/luisito/utils/django_http_server.py", "--host", "127.0.0.1",
+#           "--port", "%PORT",
 #           "--uid", "%UID", "--gid", "%GID",
-#           "/var/www/%HOST/cyclope_project/"]
+#           "/var/www/%HOST/django_project/"]
 #
 #
 #ENV = {
-#    "PATH": "/opt/cyclope_workenv/bin",
+#    "PATH": "/opt/django_virtualenv/bin",
 #}
 
 #MULTIHOST_CONFIG = {
