@@ -86,6 +86,10 @@ class ServerPool(object):
             server = self.alive.pop(0)
             server.proc.terminate()
             server.proc.wait()
+            # FIXME: Investigate if wait() blocks and how much. This should be run
+            # on non blocking way maybe deferToThread it. proc.wait() is needed
+            # so the process doesn't zoombifie.
+
             self.ports_in_use.discard(server.port)
             #threads.deferToThread(ServerPool.terminate_server, server)
 
