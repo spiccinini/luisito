@@ -23,13 +23,13 @@ PROJECT_PATH = None
 #ENV = {
 #    "PATH": "/opt/django_virtualenv/bin",
 #}
-
+#
 #MULTIHOST_CONFIG = {
 #    "host_header": "x-canonical-host",
 #    "sleep":0.2,
 #    "wait_up_to":5,
 #}
-
+#
 # Change UID and GID to the owners of PROJECT_PATH
 #PROJECT_PATH = "/var/www/%HOST/cyclope_project/"
 
