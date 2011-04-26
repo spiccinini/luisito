@@ -66,8 +66,7 @@ class MultiHostBasedResource(ReverseProxyResource):
             requested_host = request.received_headers['host'].partition(":")[0]
         else:
             requested_host = request.requestHeaders.getRawHeaders(self.config["host_header"])[0]
-        log.info("New request: %s" % (requested_host,))
-        log.info("server_pool: %s" % repr(self.server_pool))
+        log.info(u"new_request|%s|%s|%s" % (requested_host, request.method, request.uri))
         request.content.seek(0, 0)
 
         server = self.server_pool.get_server(requested_host)
@@ -78,17 +77,15 @@ class MultiHostBasedResource(ReverseProxyResource):
 
     def get_page(self, request, server):
         d = defer.Deferred()
-        log.debug("get_page")
         content = getattr(request, "_content_cache", None)
         if content is None:
             content = request.content.read()
             request._content_cache = content
-            log.debug(request._content_cache)
 
         clientFactory = self.proxyClientFactoryClass(
                 request.method, request.uri , request.clientproto,
                 request.getAllHeaders(), content, request, d)
-
+        clientFactory.noisy = False
         reactor.connectTCP(server.hostname, server.port, clientFactory)
         return d
 
@@ -103,7 +100,7 @@ class MultiHostBasedResource(ReverseProxyResource):
                 yield self.get_page(request, server)
                 return
             except Exception,e:
-                log.info(e)
+                log.warn(e)
                 yield wait_for(sleep)
 
         request.setResponseCode(501, "Gateway error")

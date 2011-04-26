@@ -67,6 +67,7 @@ class ServerPool(object):
             self.ports_in_use.add(port)
             cmd = self.make_command(hostname, port)
             server = Server(hostname, port, cmd, self.env)
+            log.info(u"start_server|%s" % hostname)
             self.alive.append(server)
         self.update()
         return server
@@ -84,20 +85,15 @@ class ServerPool(object):
     def update(self):
         if len(self.alive) > self.max_servers:
             server = self.alive.pop(0)
-            server.proc.terminate()
-            server.proc.wait()
-            # FIXME: Investigate if wait() blocks and how much. This should be run
-            # on non blocking way maybe deferToThread it. proc.wait() is needed
-            # so the process doesn't zoombifie.
-
+            server.stop()
             self.ports_in_use.discard(server.port)
-            #threads.deferToThread(ServerPool.terminate_server, server)
+            log.info(u"stop_server|%s" % server.hostname)
 
     def stop_all(self):
         for server in self.alive:
-            server.proc.terminate()
-            server.proc.wait()
+            server.stop()
         self.alive = []
+        self.ports_in_use = set()
 
     def is_alive(self, hostname):
         return hostname in (server.hostname for server in self.alive)
@@ -126,3 +122,10 @@ class Server(object):
 
     def __repr__(self):
         return "Server %s:%d PID:%s" % (self.hostname, self.port, self.proc.pid)
+
+    def stop(self):
+        # FIXME: Investigate if wait() blocks and how much. This should be run
+        # on non blocking way maybe deferToThread it. proc.wait() is needed
+        # so the process doesn't zoombifie.
+        self.proc.terminate()
+        self.proc.wait()
