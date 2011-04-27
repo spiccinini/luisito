@@ -31,7 +31,7 @@ class StartStopService(service.Service):
     def stopService(self):
         service.Service.stopService(self)
         print 'killing workers'
-        ServerPool.stop_all()
+        server_pool.stop_all()
 
 
 start_stop = StartStopService()
