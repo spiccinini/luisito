@@ -86,7 +86,7 @@ class MultiHostBasedResource(ReverseProxyResource):
                 request.method, request.uri , request.clientproto,
                 request.getAllHeaders(), content, request, d)
         clientFactory.noisy = False
-        reactor.connectTCP(server.hostname, server.port, clientFactory)
+        reactor.connectTCP("127.0.0.1", server.port, clientFactory)
         return d
 
     @inlineCallbacks
