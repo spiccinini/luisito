@@ -32,6 +32,9 @@ def parse_action(line):
             hostname = line.split(action)[1].split("|")[1].strip()
             return (action, hostname)
 
+def total_seconds(td):
+    return  td.seconds + td.days * 24 * 3600
+
 class Server(object):
     def __init__(self, hostname, start_time):
         self.hostname = hostname
@@ -124,11 +127,11 @@ if __name__ == "__main__":
 
         # Requests per day
         working_time = datetime.datetime.now()-first_seen
-        requests_per_day = 86400 * total_requests / working_time.total_seconds()
+        requests_per_day = 86400 * total_requests / total_seconds(working_time)
         print "\t%-20s %s" % ("Req/day (stat):", requests_per_day)
 
         # Average time in ServerPool
         timedeltas = [si.stop_time - si.start_time for si in servers[server]]
-        total_seconds = sum(timedeltas, datetime.timedelta(0)).total_seconds()
-        avg_in_pool =  datetime.timedelta(seconds=total_seconds / float(len(timedeltas)))
+        tot_seconds = total_seconds(sum(timedeltas, datetime.timedelta(0)))
+        avg_in_pool =  datetime.timedelta(seconds=tot_seconds / float(len(timedeltas)))
         print "\t%-20s %s" % ("Avg in Pool:", avg_in_pool)
