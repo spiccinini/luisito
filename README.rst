@@ -55,6 +55,16 @@ Features
 * It looks in a configurable header so the frontend server can write the canonical
   domain name. Eg: www.domain.com -> domain.com
 
+Download
+========
+
+The code repository is hosted on bitbucket: https://bitbucket.org/san/luisito/
+
+To get it just run:
+
+.. code-block:: bash
+
+    $ hg clone https://bitbucket.org/san/luisito
 
 Deploy
 ======
