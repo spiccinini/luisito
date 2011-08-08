@@ -106,29 +106,39 @@ if __name__ == "__main__":
     for server in server_instances:
         servers[server.hostname].append(server)
 
+    class Stats(object): pass
+
+    server_stats = {}
     # Calculate and print some statistics
     for server in servers:
-        print "-"*50
-        print "\t%-20s %s" % ("Server:", server)
-        # Total requests
-        total_requests = sum([si.request_count for si in servers[server]])
-        print "\t%-20s %d" % ("Total requests:", total_requests)
+        stats = Stats()
+        server_stats[unicode(server)] = stats
+        stats.server_name = unicode(server)
+        stats.total_requests = sum([si.request_count for si in servers[server]])
+        stats.time_alive = [si.time_alive() for si in servers[server]]
+        stats.first_seen = sorted([si.start_time for si in servers[server]])[0]
+        stats.working_time = datetime.datetime.now()-stats.first_seen
+        stats.requests_per_day = 86400 * stats.total_requests / stats.working_time.total_seconds()
 
-        # Time alive
-        time_alive = [si.time_alive() for si in servers[server]]
-        print "\t%-20s %s" % ("Total time alive:", sum(time_alive, datetime.timedelta(0)))
-
-        # First seen
-        first_seen = sorted([si.start_time for si in servers[server]])[0]
-        print "\t%-20s %s" % ("First seen:", first_seen)
-
-        # Requests per day
-        working_time = datetime.datetime.now()-first_seen
-        requests_per_day = 86400 * total_requests / working_time.total_seconds()
-        print "\t%-20s %s" % ("Req/day (stat):", requests_per_day)
-
-        # Average time in ServerPool
         timedeltas = [si.stop_time - si.start_time for si in servers[server]]
         total_seconds = sum(timedeltas, datetime.timedelta(0)).total_seconds()
-        avg_in_pool =  datetime.timedelta(seconds=total_seconds / float(len(timedeltas)))
-        print "\t%-20s %s" % ("Avg in Pool:", avg_in_pool)
+        stats.avg_in_pool =  datetime.timedelta(seconds=total_seconds / float(len(timedeltas)))
+    #import ipdb;ipdb.set_trace()
+    for stats in sorted(server_stats.values(), key=lambda s:-s.total_requests):
+        print "-"*50
+        print "\t%-20s %s" % ("Server:", stats.server_name)
+
+        # Total requests
+        print "\t%-20s %d" % ("Total requests:", stats.total_requests)
+
+        # Time alive
+        print "\t%-20s %s" % ("Total time alive:", sum(stats.time_alive, datetime.timedelta(0)))
+
+        # First seen
+        print "\t%-20s %s" % ("First seen:", stats.first_seen)
+
+        # Requests per day
+        print "\t%-20s %s" % ("Req/day (stat):", stats.requests_per_day)
+
+        # Average time in ServerPool
+        print "\t%-20s %s" % ("Avg in Pool:", stats.avg_in_pool)
