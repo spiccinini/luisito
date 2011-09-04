@@ -16,9 +16,14 @@ import settings
 application = service.Application('luisito')
 serviceCollection = service.IServiceCollection(application)
 
+if not os.path.exists(settings.OUTPUT_LOG_DIR):
+    os.makedirs(settings.OUTPUT_LOG_DIR)
+
+
 server_pool = ServerPool(cmd_tpl=settings.CMD_TPL, env=settings.ENV,
                          project_path_tpl=settings.PROJECT_PATH,
-                         max_servers=settings.MAX_SERVERS)
+                         max_servers=settings.MAX_SERVERS,
+                         output_log_dir=settings.OUTPUT_LOG_DIR)
 
 multi_host = MultiHostBasedResource(server_pool=server_pool, config=settings.MULTIHOST_CONFIG)
 

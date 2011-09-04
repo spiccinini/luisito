@@ -38,6 +38,16 @@ class ServerTestCase(unittest.TestCase):
         self.assertTrue(another_port > port)
         s.close()
 
+    def test_log(self):
+        logname = self.tmp_file + ".log"
+        with open(self.tmp_file, "w") as f:
+          f.write("prueba")
+          f.close()
+        server = Server(hostname="localhost", port=None, cmd=["cat", self.tmp_file],
+                        env=None, log_filename=logname)
+        d = defer.Deferred()
+        reactor.callLater(0.1, d.callback, None)
+        return d.addCallback(lambda _: self.assertTrue(open(logname).read() == "prueba"))
 
     def tearDown(self):
         if os.path.exists(self.tmp_file):

@@ -48,11 +48,13 @@ def find_open_port(starting_from=9000, exclude=None):
 
 
 class ServerPool(object):
-    def __init__(self, cmd_tpl, env=None, project_path_tpl="", max_servers=10):
+    def __init__(self, cmd_tpl, env=None, project_path_tpl="", max_servers=10,
+                  output_log_dir="."):
         self.max_servers = max_servers
         self.cmd_tpl = cmd_tpl
         self.env = env
         self.project_path_tpl = project_path_tpl
+        self.output_log_dir = output_log_dir
         self.alive = []
         self.ports_in_use = set()
 
@@ -66,7 +68,8 @@ class ServerPool(object):
             port = find_open_port(exclude=self.ports_in_use)
             self.ports_in_use.add(port)
             cmd = self.make_command(hostname, port)
-            server = Server(hostname, port, cmd, self.env)
+            plog = os.path.join(self.output_log_dir, hostname + ".log")
+            server = Server(hostname, port, cmd, self.env, plog)
             log.info(u"start_server|%s" % hostname)
             self.alive.append(server)
         self.update()
@@ -113,12 +116,17 @@ class ServerPool(object):
 
 
 class Server(object):
-    def __init__(self, hostname, port, cmd, env):
+    def __init__(self, hostname, port, cmd, env, log_filename=None):
         self.hostname = hostname
         self.port = port
         self.cmd = cmd
         self.env = env
-        self.proc = subprocess.Popen(cmd, env=self.env)
+        if log_filename:
+            self.log = open(log_filename, 'a')
+        else:
+            self.log = None
+        self.proc = subprocess.Popen(cmd, env=self.env, stdout=self.log,
+                                     stderr=self.log)
 
     def __repr__(self):
         return "Server %s:%d PID:%s" % (self.hostname, self.port, self.proc.pid)
@@ -129,3 +137,5 @@ class Server(object):
         # so the process doesn't zoombifie.
         self.proc.terminate()
         self.proc.wait()
+        if self.log:
+            self.log.close()

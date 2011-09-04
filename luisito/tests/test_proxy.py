@@ -9,6 +9,7 @@ from twisted.python import failure
 from twisted.internet import defer, reactor
 from twisted.web import server, client
 from twisted.web.client import Agent
+from twisted.web.http_headers import Headers
 
 from luisito.server import Server, ServerPool
 from luisito.proxy import MultiHostBasedResource, MyProxyClientFactory

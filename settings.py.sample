@@ -10,6 +10,7 @@ CMD_TPL = ["python2", "-m", "SimpleHTTPServer", "%PORT"]
 ENV = {}
 MULTIHOST_CONFIG = None
 PROJECT_PATH = None
+OUTPUT_LOG_DIR = "/tmp/luisito"
 
 ################
 # django
