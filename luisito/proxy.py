@@ -32,7 +32,7 @@ def wait_for(x):
     return d
 
 
-class MyProxyClientFactory(ProxyClientFactory):
+class MHProxyClientFactory(ProxyClientFactory):
     def __init__(self, command, rest, version, headers, data, father, d):
         ProxyClientFactory.__init__(self, command, rest, version, headers, data, father)
         self.d = d
@@ -47,7 +47,7 @@ class MyProxyClientFactory(ProxyClientFactory):
 
 class MultiHostBasedResource(ReverseProxyResource):
 
-    proxyClientFactoryClass = MyProxyClientFactory
+    proxyClientFactoryClass = MHProxyClientFactory
 
     def __init__(self, server_pool, config=None, reactor=reactor):
         ReverseProxyResource.__init__(self, host="", port=80, path="", reactor=reactor)

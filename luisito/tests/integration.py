@@ -18,11 +18,11 @@ from twisted.web.client import Agent
 from twisted.web.http_headers import Headers
 
 PORT = 8080
-DOMAINS = ["http://test%d:%d/" %(i, PORT) for i in range(5,11)]
+DOMAINS = ["http://test%d:%d/" % (i, PORT) for i in range(5, 11)]
 
 agent = client.Agent(reactor)
 
-DOMAINS_TO_QUERY = DOMAINS*3
+DOMAINS_TO_QUERY = DOMAINS * 3
 
 deferreds = [agent.request('GET', domain, bodyProducer=None) for domain in DOMAINS_TO_QUERY]
 
