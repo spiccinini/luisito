@@ -4,7 +4,7 @@ import sys
 from twisted.application import internet, service
 from twisted.application.internet import TimerService
 from twisted.web import server
-
+from twisted.spread import pb
 
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 
@@ -32,13 +32,30 @@ site = server.Site(multi_host)
 tcp_server = internet.TCPServer(interface=settings.HOST, port=settings.PORT, factory=site)
 tcp_server.setServiceParent(serviceCollection)
 
+
+class Remote(pb.Root):
+    server_pool = server_pool
+    
+    def remote_list(self):
+        return repr(self.server_pool)
+    
+    def remote_stop_server(self, hostname):
+        result = self.server_pool.stop_server(hostname)
+        if result:
+            return "sucessfuly stopped %s" % hostname
+        else:
+            return "Error: can't stop %s" % hostname
+
+
+remote_server = internet.TCPServer(interface='localhost', port=4444, factory=pb.PBServerFactory(Remote()))
+remote_server.setServiceParent(serviceCollection)
+
+
 class StartStopService(service.Service):
     def stopService(self):
         service.Service.stopService(self)
         print 'killing workers'
         server_pool.stop_all()
 
-
 start_stop = StartStopService()
 start_stop.setServiceParent(serviceCollection)
-

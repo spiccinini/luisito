@@ -25,6 +25,8 @@ import subprocess
 
 from twisted.internet import defer, threads
 from twisted.python import log
+from twisted.spread import pb
+
 
 def find_open_port(starting_from=9000, exclude=None):
     """
@@ -106,10 +108,13 @@ class ServerPool(object):
             if server.hostname == hostname:
                 return server
 
-    def terminate_server(self, server):
-        server.proc.terminate()
-        server.proc.wait()
-        self.ports_in_use.discard(server.port)
+    def stop_server(self, hostname):
+        server = self._get_server(hostname)
+        if server:
+            server.stop()
+            self.alive.remove(server)
+            self.ports_in_use.discard(server.port)
+            return True
 
     def __repr__(self):
         return repr(self.alive)
